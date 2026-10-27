@@ -1,3 +1,4 @@
+
 import pandas as pd
 import os
 
@@ -73,9 +74,75 @@ for endeks, dosya in dosyalar.items():
 
     df = df.reset_index(drop=True)
 
+    df["MA5"] = df["Price"].rolling(window=5).mean()
+    df["MA10"] = df["Price"].rolling(window=10).mean()
+    df["MA20"] = df["Price"].rolling(window=20).mean()
+
+    print("\nHareketli ortalamalar hesaplandı:")
+    print(df[["Date", "Price", "MA5", "MA10", "MA20"]].tail())
+
+    delta = df["Price"].diff()
+
+    kazanc = delta.clip(lower=0)
+    kayip = -delta.clip(upper=0)
+
+    ortalama_kazanc = kazanc.ewm(
+        alpha=1/14, min_periods=14, adjust=False
+    ).mean()
+
+    ortalama_kayip = kayip.ewm(
+        alpha=1/14, min_periods=14, adjust=False
+    ).mean()
+
+    rs = ortalama_kazanc / ortalama_kayip
+
+    df["RSI"] = 100 - (100 / (1 + rs))
+
+    df.loc[
+        (ortalama_kayip == 0) & (ortalama_kazanc > 0), "RSI"
+    ] = 100
+
+    df.loc[
+        (ortalama_kayip == 0) & (ortalama_kazanc == 0), "RSI"
+    ] = 50
+
+    print("\nRSI hesaplandı:")
+    print(df[["Date", "Price", "RSI"]].tail())
+
+    ema12 = df["Price"].ewm(
+        span=12, adjust=False
+    ).mean()
+
+    ema26 = df["Price"].ewm(
+        span=26, adjust=False
+    ).mean()
+
+    df["MACD"] = ema12 - ema26
+
+    df["MACD_Signal"] = df["MACD"].ewm(
+        span=9, adjust=False
+    ).mean()
+
+    df["MACD_Hist"] = df["MACD"] - df["MACD_Signal"]
+
+    print("\nMACD hesaplandı:")
+    print(
+        df[
+            ["Date", "Price", "MACD", "MACD_Signal", "MACD_Hist"]
+        ].tail()
+    )
+
+    print("\nTeknik göstergelerdeki eksik değerler:")
+    print(
+        df[
+            ["MA5", "MA10", "MA20", "RSI",
+             "MACD", "MACD_Signal", "MACD_Hist"]
+        ].isnull().sum().to_string()
+    )
+
     dosya_adi = os.path.basename(dosya)
 
     df.to_csv("data/processed/" + dosya_adi, index=False)
 
-    print("\nTemizlenmiş veri kaydedildi:", dosya_adi)
+    print("\nİşlenmiş veri kaydedildi:", dosya_adi)
     print("Yeni veri seti boyutu:", df.shape)
