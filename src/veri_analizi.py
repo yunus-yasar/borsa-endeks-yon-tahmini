@@ -140,6 +140,19 @@ for endeks, dosya in dosyalar.items():
         ].isnull().sum().to_string()
     )
 
+    df["Target"] = (df["Price"].shift(-1) > df["Price"]).astype(int)
+
+    df = df.iloc[:-1].copy()
+
+    print("\nTarget sütunu oluşturuldu:")
+    print(df[["Date", "Price", "Target"]].tail())
+
+    print("\nTarget sınıf dağılımı:")
+    print(df["Target"].value_counts().sort_index())
+
+    print("\nTarget eksik değer sayısı:")
+    print(df["Target"].isnull().sum())
+
     dosya_adi = os.path.basename(dosya)
 
     df.to_csv("data/processed/" + dosya_adi, index=False)
