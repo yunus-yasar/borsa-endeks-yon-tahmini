@@ -15,16 +15,13 @@ for endeks, dosya in dosyalar.items():
     df = pd.read_csv(dosya)
 
     print("\nEndeks:", endeks)
-    print("Veri seti boyutu:", df.shape)
+    print("Ham veri seti boyutu:", df.shape)
 
-    print("\nEksik değerler:")
+    print("\nHam verideki eksik değerler:")
     print(df.isnull().sum().to_string())
 
-    print("\nTekrar eden satır sayısı:")
-    print(df.duplicated().sum())
-
-    print("\nTekrar eden tarih sayısı:")
-    print(df["Date"].duplicated().sum())
+    print("\nTekrar eden satır sayısı:", df.duplicated().sum())
+    print("Tekrar eden tarih sayısı:", df["Date"].duplicated().sum())
 
     df["Date"] = pd.to_datetime(df["Date"])
 
@@ -39,11 +36,22 @@ for endeks, dosya in dosyalar.items():
         df[sutun] = df[sutun].astype(str).str.replace(",", "", regex=False)
         df[sutun] = pd.to_numeric(df[sutun], errors="coerce")
 
-    print("\nSıfır veya negatif fiyat sayıları:")
-    print((df[fiyat_sutunlari] <= 0).sum().to_string())
+    print("\nSıfır veya negatif fiyat sayısı:",
+          (df[fiyat_sutunlari] <= 0).sum().sum())
 
-    print("\nEn düşük fiyat değerleri:")
-    print(df[fiyat_sutunlari].min())
+    hatali_fiyat = (
+        (df["High"] < df["Low"]) |
+        (df["Open"] > df["High"]) |
+        (df["Open"] < df["Low"]) |
+        (df["Price"] > df["High"]) |
+        (df["Price"] < df["Low"])
+    )
+
+    print("\nTemizlenen hatalı fiyat kaydı:", hatali_fiyat.sum())
+
+    df = df.loc[~hatali_fiyat].copy()
+
+    df = df.reset_index(drop=True)
 
     df = df.drop(columns=["Vol.", "Change %"])
 
@@ -110,9 +118,6 @@ for endeks, dosya in dosyalar.items():
 
     df = df.iloc[:-1].copy()
 
-    print("\nTarget sınıf dağılımı:")
-    print(df["Target"].value_counts().sort_index())
-
     print("\nEksik değer temizliği öncesi satır sayısı:", len(df))
 
     df = df.dropna()
@@ -120,10 +125,51 @@ for endeks, dosya in dosyalar.items():
     df = df.reset_index(drop=True)
 
     print("Eksik değer temizliği sonrası satır sayısı:", len(df))
-    print("Kalan eksik değer sayısı:", df.isnull().sum().sum())
+
+    print("\nSon veri doğrulama:")
+
+    print("Tarihler sıralı mı:", df["Date"].is_monotonic_increasing)
+
+    print("Tekrar eden tarih sayısı:", df["Date"].duplicated().sum())
+
+    hatali_fiyat = (
+        (df["High"] < df["Low"]) |
+        (df["Open"] > df["High"]) |
+        (df["Open"] < df["Low"]) |
+        (df["Price"] > df["High"]) |
+        (df["Price"] < df["Low"])
+    )
+
+    print("Hatalı fiyat aralığı sayısı:", hatali_fiyat.sum())
+
+    print(
+        "RSI aralık hatası:",
+        ((df["RSI"] < 0) | (df["RSI"] > 100)).sum()
+    )
+
+    beklenen_target = (
+        df["Price"].shift(-1) > df["Price"]
+    ).astype(int)
+
+    target_hatalari = (
+        df["Target"].iloc[:-1] != beklenen_target.iloc[:-1]
+    ).sum()
+
+    print("Hatalı Target sayısı:", target_hatalari)
+
+    print("Toplam eksik değer sayısı:", df.isnull().sum().sum())
+
+    print("\nTarget sınıf dağılımı:")
+    print(df["Target"].value_counts().sort_index())
+
+    print("\nTarget yüzdelik dağılımı (%):")
+    print(
+        (df["Target"].value_counts(normalize=True).sort_index() * 100)
+        .round(2)
+    )
 
     print("\nSon veri setinin ilk 5 satırı:")
-    print(df.head())
+    print(df.head().to_string(index=False))
 
     dosya_adi = os.path.basename(dosya)
 
