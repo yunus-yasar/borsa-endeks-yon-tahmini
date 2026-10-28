@@ -17,12 +17,6 @@ for endeks, dosya in dosyalar.items():
     print("\nEndeks:", endeks)
     print("Veri seti boyutu:", df.shape)
 
-    print("\nİlk 5 satır:")
-    print(df.head())
-
-    print("\nSütunlar:")
-    print(df.columns.tolist())
-
     print("\nEksik değerler:")
     print(df.isnull().sum().to_string())
 
@@ -45,12 +39,6 @@ for endeks, dosya in dosyalar.items():
         df[sutun] = df[sutun].astype(str).str.replace(",", "", regex=False)
         df[sutun] = pd.to_numeric(df[sutun], errors="coerce")
 
-    print("\nFiyat sütunlarının veri tipleri:")
-    print(df[fiyat_sutunlari].dtypes)
-
-    print("\nFiyat sütunlarındaki eksik değerler:")
-    print(df[fiyat_sutunlari].isnull().sum().to_string())
-
     print("\nSıfır veya negatif fiyat sayıları:")
     print((df[fiyat_sutunlari] <= 0).sum().to_string())
 
@@ -59,16 +47,7 @@ for endeks, dosya in dosyalar.items():
 
     df = df.drop(columns=["Vol.", "Change %"])
 
-    print("\nTemizlenmiş veri setinin sütunları:")
-    print(df.columns.tolist())
-
-    print("\nTemizlenmiş veri seti:")
-    print(df.head())
-
     df["Change"] = df["Price"].pct_change() * 100
-
-    print("\nGünlük değişim hesaplandı:")
-    print(df[["Date", "Price", "Change"]].head())
 
     df = df.dropna(subset=["Change"])
 
@@ -77,9 +56,6 @@ for endeks, dosya in dosyalar.items():
     df["MA5"] = df["Price"].rolling(window=5).mean()
     df["MA10"] = df["Price"].rolling(window=10).mean()
     df["MA20"] = df["Price"].rolling(window=20).mean()
-
-    print("\nHareketli ortalamalar hesaplandı:")
-    print(df[["Date", "Price", "MA5", "MA10", "MA20"]].tail())
 
     delta = df["Price"].diff()
 
@@ -106,9 +82,6 @@ for endeks, dosya in dosyalar.items():
         (ortalama_kayip == 0) & (ortalama_kazanc == 0), "RSI"
     ] = 50
 
-    print("\nRSI hesaplandı:")
-    print(df[["Date", "Price", "RSI"]].tail())
-
     ema12 = df["Price"].ewm(
         span=12, adjust=False
     ).mean()
@@ -125,13 +98,6 @@ for endeks, dosya in dosyalar.items():
 
     df["MACD_Hist"] = df["MACD"] - df["MACD_Signal"]
 
-    print("\nMACD hesaplandı:")
-    print(
-        df[
-            ["Date", "Price", "MACD", "MACD_Signal", "MACD_Hist"]
-        ].tail()
-    )
-
     print("\nTeknik göstergelerdeki eksik değerler:")
     print(
         df[
@@ -144,14 +110,20 @@ for endeks, dosya in dosyalar.items():
 
     df = df.iloc[:-1].copy()
 
-    print("\nTarget sütunu oluşturuldu:")
-    print(df[["Date", "Price", "Target"]].tail())
-
     print("\nTarget sınıf dağılımı:")
     print(df["Target"].value_counts().sort_index())
 
-    print("\nTarget eksik değer sayısı:")
-    print(df["Target"].isnull().sum())
+    print("\nEksik değer temizliği öncesi satır sayısı:", len(df))
+
+    df = df.dropna()
+
+    df = df.reset_index(drop=True)
+
+    print("Eksik değer temizliği sonrası satır sayısı:", len(df))
+    print("Kalan eksik değer sayısı:", df.isnull().sum().sum())
+
+    print("\nSon veri setinin ilk 5 satırı:")
+    print(df.head())
 
     dosya_adi = os.path.basename(dosya)
 
